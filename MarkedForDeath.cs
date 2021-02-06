@@ -41,18 +41,18 @@ namespace Oxide.Plugins
             else
             {
                 DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
-                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", "Current Mark '" + dataFile["MarkedPlayerName"] + "' is located near " + dataFile["MarkedPlayerLocation"] + ".");
+                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"Current Mark '{dataFile["MarkedPlayerName"]}' is located near {dataFile["MarkedPlayerLocation"]}.");
                 InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
             }
         }
 
         // Gameplay Hooks
 
-        object OnPlayerDeath(BasePlayer player, HitInfo info) // TODO: Send out messages on flag passing + refactor
+        object OnPlayerDeath(BasePlayer player, HitInfo info) // TODO: Send out messages on mark passing + refactor
         {
             DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
 
-            // player dying is flagged
+            // player dying is marked
             if (player.userID == Convert.ToUInt64(dataFile["MarkedPlayerSteamID"]))
             {
                 Puts($"Marked player '{dataFile["MarkedPlayerName"]}' died.");
@@ -81,7 +81,7 @@ namespace Oxide.Plugins
         {
             BasePlayer randomPlayer = BasePlayer.activePlayerList[Core.Random.Range(0, BasePlayer.activePlayerList.Count)];
             ChangeMarkedPlayer(randomPlayer);
-            SendReply(arg, randomPlayer.displayName + " is now the flag holder.");
+            SendReply(arg, randomPlayer.displayName + " is now marked for death.");
         }
 
         [ConsoleCommand("whomark")] // Responds with who the current mark is
@@ -110,7 +110,7 @@ namespace Oxide.Plugins
             if (mark != null)
             {
                 ChangeMarkedPlayer(mark);
-                SendReply(arg, mark.displayName + " is now the flag holder.");
+                SendReply(arg, mark.displayName + " is now marked for death.");
             }
             else
             {
@@ -136,7 +136,7 @@ namespace Oxide.Plugins
             if (mark != null)
             {
                 ChangeMarkedPlayer(mark);
-                SendReply(arg, mark.displayName + " is now the flag holder.");
+                SendReply(arg, mark.displayName + " is now marked for death.");
             }
             else
             {
@@ -157,12 +157,12 @@ namespace Oxide.Plugins
             {
                 Puts("Info Panel loaded. Adding MarkedForDeath panels.");
                 InfoPanel.Call("SendPanelInfo", "MarkedForDeath", new List<string> { "CurrentMarkPanel" });
-                InfoPanel.Call("PanelRegister", "MarkedForDeath", "CurrentMarkPanel", FlagHolderPanelCfg);
+                InfoPanel.Call("PanelRegister", "MarkedForDeath", "CurrentMarkPanel", CurrentMarkPanelCfg);
                 InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
             }
         }
 
-        private static string FlagHolderPanelCfg = @"
+        private static string CurrentMarkPanelCfg = @"
         {
             ""AnchorX"": ""Right"",
             ""AnchorY"": ""Bottom"",
@@ -218,7 +218,7 @@ namespace Oxide.Plugins
         private string ParseLocationFromVector(UnityEngine.Vector3 position)
         {
             // TODO: Implement parsing from vector to map string (A1), also consider implementing randomizing to get a nearby value instead
-            return "";
+            return "A1";
         }
 
         #endregion
