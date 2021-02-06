@@ -38,6 +38,12 @@ namespace Oxide.Plugins
                 dataFile["MarkedPlayerLocation"] = "A1";
                 dataFile.Save();
             }
+            else
+            {
+                DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
+                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", "Current Mark '" + dataFile["MarkedPlayerName"] + "' is located near " + dataFile["MarkedPlayerLocation"] + ".");
+                InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
+            }
         }
 
         // Gameplay Hooks
@@ -47,23 +53,19 @@ namespace Oxide.Plugins
             DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
 
             // player dying is flagged
-            if (player.userID == (ulong)dataFile["MarkedPlayerSteamID"])
+            if (player.userID == Convert.ToUInt64(dataFile["MarkedPlayerSteamID"]))
             {
-                if (info == null) // No player hitinfo (suicide?)
-                {
-                    Puts("NOINFO|");
-                    return null;
-                }
+                Puts($"Marked player '{dataFile["MarkedPlayerName"]}' died.");
 
                 // initiator is not an NPC (must be a player)
-                if (!(info.InitiatorPlayer is NPCPlayer) && info.InitiatorPlayer.userID != player.userID)
+                if (info != null && !(info.InitiatorPlayer is NPCPlayer) && info.InitiatorPlayer.userID != player.userID)
                 {
                     ChangeMarkedPlayer(info.InitiatorPlayer);
-                    Puts("Flag has been passed from " + player.displayName + " to " + info.InitiatorPlayer.displayName + ".");
+                    Puts($"Mark has been passed from {player.displayName} to {info.InitiatorPlayer.displayName}.");
                 }
-                else // initiator was an npc
+                else // Non-transferable 
                 {
-                    Puts("NPC|" + info.ToString());
+                    Puts("Marked player killed self. No mark transfer.");
                 }
             }
 
@@ -96,7 +98,8 @@ namespace Oxide.Plugins
             string markName = arg.GetString(0);
 
             BasePlayer mark = null;
-            foreach(BasePlayer player in BasePlayer.allPlayerList) {
+            foreach (BasePlayer player in BasePlayer.allPlayerList)
+            {
                 if (player.displayName.Equals(markName, StringComparison.OrdinalIgnoreCase))
                 {
                     mark = player;
@@ -104,7 +107,7 @@ namespace Oxide.Plugins
                 }
             }
 
-            if(mark != null)
+            if (mark != null)
             {
                 ChangeMarkedPlayer(mark);
                 SendReply(arg, mark.displayName + " is now the flag holder.");
@@ -150,7 +153,7 @@ namespace Oxide.Plugins
 
         private void Loaded()
         {
-            if(InfoPanel)
+            if (InfoPanel)
             {
                 Puts("Info Panel loaded. Adding MarkedForDeath panels.");
                 InfoPanel.Call("SendPanelInfo", "MarkedForDeath", new List<string> { "CurrentMarkPanel" });
@@ -193,7 +196,7 @@ namespace Oxide.Plugins
         #endregion
 
         #region Helpers
-        
+
         private void ChangeMarkedPlayer(BasePlayer nextMark)
         {
             // Update the datafile
