@@ -14,6 +14,7 @@ namespace Oxide.Plugins
     public class MarkedForDeath : RustPlugin
     {
         #region Variables
+        private const int LOCATION_SCRAMBLE_AMOUNT = 150;
 
         #endregion
 
@@ -41,7 +42,7 @@ namespace Oxide.Plugins
             else
             {
                 DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
-                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"Current Mark '{dataFile["MarkedPlayerName"]}' is located near {dataFile["MarkedPlayerLocation"]}.");
+                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
                 InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
             }
         }
@@ -144,6 +145,89 @@ namespace Oxide.Plugins
             }
         }
 
+        [ConsoleCommand("updatemarklocation")]
+        private void UpdateMarkLocationCommand(ConsoleSystem.Arg arg)
+        {
+            DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
+            ulong markID = Convert.ToUInt64(dataFile["MarkedPlayerSteamID"]);
+
+            BasePlayer mark = null;
+            foreach (BasePlayer player in BasePlayer.allPlayerList)
+            {
+                if (player.userID == markID)
+                {
+                    mark = player;
+                    break;
+                }
+            }
+
+            dataFile["MarkedPlayerLocation"] = GetScrambledMapCoords(mark.ServerPosition);
+
+            dataFile.Save();
+
+            // Update the infopanel
+            if (InfoPanel)
+            {
+                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
+                InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
+            }
+
+        }
+
+        #endregion
+
+        #region Utility
+
+        private void ChangeMarkedPlayer(BasePlayer nextMark)
+        {
+            // Update the datafile
+            DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
+            dataFile["MarkedPlayerSteamID"] = nextMark.userID;
+            dataFile["MarkedPlayerName"] = nextMark.displayName;
+            dataFile["MarkedPlayerLocation"] = GetScrambledMapCoords(nextMark.ServerPosition);
+
+            dataFile.Save();
+
+            // Update the infopanel
+            if (InfoPanel)
+            {
+                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
+                InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
+            }
+        }
+
+        private string GetScrambledMapCoords(UnityEngine.Vector3 position)
+        {
+            // Scramble the location
+            UnityEngine.Vector3 randomPosition = new UnityEngine.Vector3(position.x, position.y, position.z);
+            randomPosition.x += Oxide.Core.Random.Range(LOCATION_SCRAMBLE_AMOUNT * -1, LOCATION_SCRAMBLE_AMOUNT);
+            randomPosition.z += Oxide.Core.Random.Range(LOCATION_SCRAMBLE_AMOUNT * -1, LOCATION_SCRAMBLE_AMOUNT);
+
+            return FormatGridReference(randomPosition);
+        }
+
+        private static string FormatGridReference(UnityEngine.Vector3 position)
+        {
+            UnityEngine.Vector2 roundedPos = new UnityEngine.Vector2(World.Size / 2 + position.x, World.Size / 2 - position.z);
+            string grid = $"{NumberToLetter((int)(roundedPos.x / 150))}:{(int)(roundedPos.y / 150)}";
+            return grid;
+        }
+
+        private static string NumberToLetter(int num)
+        {
+            int num2 = UnityEngine.Mathf.FloorToInt(num / 26);
+            int num3 = num % 26;
+            string text = string.Empty;
+            if (num2 > 0)
+            {
+                for (int i = 0; i < num2; i++)
+                {
+                    text += Convert.ToChar(65 + i);
+                }
+            }
+            return text + Convert.ToChar(65 + num3).ToString();
+        }
+
         #endregion
 
         #region InfoPanel Integration
@@ -192,34 +276,6 @@ namespace Oxide.Plugins
             },
             ""Width"": 1.0
         }";
-
-        #endregion
-
-        #region Helpers
-
-        private void ChangeMarkedPlayer(BasePlayer nextMark)
-        {
-            // Update the datafile
-            DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
-            dataFile["MarkedPlayerSteamID"] = nextMark.userID;
-            dataFile["MarkedPlayerName"] = nextMark.displayName;
-            dataFile["MarkedPlayerLocation"] = ParseLocationFromVector(nextMark.ServerPosition);
-
-            dataFile.Save();
-
-            // Update the infopanel
-            if (InfoPanel)
-            {
-                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", "Current Mark '" + nextMark.displayName + "' is located near " + ParseLocationFromVector(nextMark.ServerPosition) + ".");
-                InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
-            }
-        }
-
-        private string ParseLocationFromVector(UnityEngine.Vector3 position)
-        {
-            // TODO: Implement parsing from vector to map string (A1), also consider implementing randomizing to get a nearby value instead
-            return "A1";
-        }
 
         #endregion
     }
