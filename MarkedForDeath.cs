@@ -39,6 +39,36 @@ namespace Oxide.Plugins
             }
         }
 
+        // Gameplay Hooks
+
+        object OnPlayerDeath(BasePlayer player, HitInfo info) // TODO: Send out messages on flag passing + refactor
+        {
+            DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
+
+            // player dying is flagged
+            if (player.userID == (ulong)dataFile["MarkedPlayerSteamID"])
+            {
+                if (info == null) // No player hitinfo (suicide?)
+                {
+                    Puts("NOINFO|");
+                    return null;
+                }
+
+                // initiator is not an NPC (must be a player)
+                if (!(info.InitiatorPlayer is NPCPlayer) && info.InitiatorPlayer.userID != player.userID)
+                {
+                    ChangeMarkedPlayer(info.InitiatorPlayer);
+                    Puts("Flag has been passed from " + player.displayName + " to " + info.InitiatorPlayer.displayName + ".");
+                }
+                else // initiator was an npc
+                {
+                    Puts("NPC|" + info.ToString());
+                }
+            }
+
+            return null;
+        }
+
         #endregion
 
         #region Commands
