@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Oxide.Plugins
 {
-    [Info("MarkedForDeath", "humanalog", "v1.0")]
+    [Info("MarkedForDeath", "humanalog", "1.0")]
     [Description("One person will be marked for death. After killing this person, the killer becomes the next who is marked for death.")]
     public class MarkedForDeath : RustPlugin
     {
@@ -161,6 +161,11 @@ namespace Oxide.Plugins
                 }
             }
 
+            if(mark == null)
+            {
+                this.
+            }
+
             dataFile["MarkedPlayerLocation"] = GetScrambledMapCoords(mark.ServerPosition);
 
             dataFile.Save();
@@ -171,7 +176,6 @@ namespace Oxide.Plugins
                 InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
                 InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
             }
-
         }
 
         #endregion
