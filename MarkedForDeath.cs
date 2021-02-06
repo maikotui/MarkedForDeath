@@ -9,12 +9,20 @@ using System.Threading.Tasks;
 
 namespace Oxide.Plugins
 {
-    [Info("MarkedForDeath", "humanalog", "1.0")]
+    [Info("MarkedForDeath", "humanalog", "1.1")]
     [Description("One person will be marked for death. After killing this person, the killer becomes the next who is marked for death.")]
     public class MarkedForDeath : RustPlugin
     {
         #region Variables
+
+        // The amount to scramble the mark's location in meters. One block on the map is 150 meters.
         private const int LOCATION_SCRAMBLE_AMOUNT = 150;
+
+        // The amount of time between each location update.
+        private const float LOCATION_UPDATE_INTERVAL_IN_MINUTES = 30f;
+
+        // A reference to the timer that runs the location update function.
+        private Timer LocationUpdater;
 
         #endregion
 
@@ -33,17 +41,23 @@ namespace Oxide.Plugins
         {
             if (!Interface.Oxide.DataFileSystem.ExistsDatafile("MarkedForDeathData"))
             {
-                DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
-                dataFile["MarkedPlayerSteamID"] = Convert.ToUInt64(Config["DefaultMarkedPlayerID"]);
-                dataFile["MarkedPlayerName"] = Config["DefaultMarkedPlayerName"];
-                dataFile["MarkedPlayerLocation"] = "A1";
-                dataFile.Save();
+                DynamicConfigFile newDataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
+                newDataFile["MarkedPlayerSteamID"] = Convert.ToUInt64(Config["DefaultMarkedPlayerID"]);
+                newDataFile["MarkedPlayerName"] = Config["DefaultMarkedPlayerName"];
+                newDataFile["MarkedPlayerLocation"] = "A1";
+                newDataFile.Save();
             }
-            else
+
+            timer.Repeat(60 * LOCATION_UPDATE_INTERVAL_IN_MINUTES, 0, () => UpdateLocation());
+
+            ReloadInfoPanel();
+        }
+
+        void Unload()
+        {
+            if (LocationUpdater != null && !LocationUpdater.Destroyed)
             {
-                DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
-                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
-                InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
+                LocationUpdater.Destroy();
             }
         }
 
@@ -62,6 +76,7 @@ namespace Oxide.Plugins
                 if (info != null && !(info.InitiatorPlayer is NPCPlayer) && info.InitiatorPlayer.userID != player.userID)
                 {
                     ChangeMarkedPlayer(info.InitiatorPlayer);
+                    ReloadInfoPanel();
                     Puts($"Mark has been passed from {player.displayName} to {info.InitiatorPlayer.displayName}.");
                 }
                 else // Non-transferable 
@@ -82,6 +97,7 @@ namespace Oxide.Plugins
         {
             BasePlayer randomPlayer = BasePlayer.activePlayerList[Core.Random.Range(0, BasePlayer.activePlayerList.Count)];
             ChangeMarkedPlayer(randomPlayer);
+            ReloadInfoPanel();
             SendReply(arg, randomPlayer.displayName + " is now marked for death.");
         }
 
@@ -111,6 +127,7 @@ namespace Oxide.Plugins
             if (mark != null)
             {
                 ChangeMarkedPlayer(mark);
+                ReloadInfoPanel();
                 SendReply(arg, mark.displayName + " is now marked for death.");
             }
             else
@@ -138,6 +155,7 @@ namespace Oxide.Plugins
             if (mark != null)
             {
                 ChangeMarkedPlayer(mark);
+                ReloadInfoPanel();
                 SendReply(arg, mark.displayName + " is now marked for death.");
             }
             else
@@ -163,18 +181,13 @@ namespace Oxide.Plugins
                 }
             }
 
-            if(mark != null)
+            if (mark != null)
             {
                 dataFile["MarkedPlayerLocation"] = GetScrambledMapCoords(mark.ServerPosition);
 
                 dataFile.Save();
 
-                // Update the infopanel
-                if (InfoPanel)
-                {
-                    InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
-                    InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
-                }
+                ReloadInfoPanel();
             }
             else
             {
@@ -196,12 +209,34 @@ namespace Oxide.Plugins
             dataFile["MarkedPlayerLocation"] = GetScrambledMapCoords(nextMark.ServerPosition);
 
             dataFile.Save();
+        }
 
-            // Update the infopanel
-            if (InfoPanel)
+        private void UpdateLocation()
+        {
+            DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
+            ulong markID = Convert.ToUInt64(dataFile["MarkedPlayerSteamID"]);
+
+            BasePlayer mark = null;
+            foreach (BasePlayer player in BasePlayer.allPlayerList)
             {
-                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
-                InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
+                if (player.userID == markID)
+                {
+                    mark = player;
+                    break;
+                }
+            }
+
+            if (mark != null)
+            {
+                dataFile["MarkedPlayerLocation"] = GetScrambledMapCoords(mark.ServerPosition);
+
+                dataFile.Save();
+
+                ReloadInfoPanel();
+            }
+            else
+            {
+                Interface.Oxide.LogError($"Could not find player with SteamID {markID}");
             }
         }
 
@@ -237,6 +272,16 @@ namespace Oxide.Plugins
             return text + Convert.ToChar(65 + num3).ToString();
         }
 
+        private void ReloadInfoPanel()
+        {
+            if (InfoPanel)
+            {
+                DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
+                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
+                InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
+            }
+        }
+
         #endregion
 
         #region InfoPanel Integration
@@ -251,8 +296,13 @@ namespace Oxide.Plugins
                 Puts("Info Panel loaded. Adding MarkedForDeath panels.");
                 InfoPanel.Call("SendPanelInfo", "MarkedForDeath", new List<string> { "CurrentMarkPanel" });
                 InfoPanel.Call("PanelRegister", "MarkedForDeath", "CurrentMarkPanel", CurrentMarkPanelCfg);
-                InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
+                ReloadInfoPanel();
             }
+        }
+
+        void OnPlayerConnected(BasePlayer player)
+        {
+            ReloadInfoPanel();
         }
 
         private static string CurrentMarkPanelCfg = @"
