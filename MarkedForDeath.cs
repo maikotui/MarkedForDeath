@@ -205,7 +205,7 @@ namespace Oxide.Plugins
             // Update the infopanel
             if (InfoPanel)
             {
-                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", nextMark.displayName);
+                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", "Current Mark: " + nextMark.displayName);
                 InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
             }
         }
