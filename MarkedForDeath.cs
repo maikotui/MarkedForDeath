@@ -78,6 +78,7 @@ namespace Oxide.Plugins
                     ChangeMarkedPlayer(info.InitiatorPlayer);
                     ReloadInfoPanel();
                     Puts($"Mark has been passed from {player.displayName} to {info.InitiatorPlayer.displayName}.");
+                    player.ChatMessage($"{player.displayName} has been killed. {info.InitiatorPlayer.displayName} is the new mark.");
                 }
                 else // Non-transferable 
                 {
