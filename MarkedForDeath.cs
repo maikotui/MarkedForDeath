@@ -35,6 +35,7 @@ namespace Oxide.Plugins
                 DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
                 dataFile["MarkedPlayerSteamID"] = Convert.ToUInt64(Config["DefaultMarkedPlayerID"]);
                 dataFile["MarkedPlayerName"] = Config["DefaultMarkedPlayerName"];
+                dataFile["MarkedPlayerLocation"] = "A1";
                 dataFile.Save();
             }
         }
@@ -199,15 +200,22 @@ namespace Oxide.Plugins
             DynamicConfigFile dataFile = Interface.Oxide.DataFileSystem.GetDatafile("MarkedForDeathData");
             dataFile["MarkedPlayerSteamID"] = nextMark.userID;
             dataFile["MarkedPlayerName"] = nextMark.displayName;
+            dataFile["MarkedPlayerLocation"] = ParseLocationFromVector(nextMark.ServerPosition);
 
             dataFile.Save();
 
             // Update the infopanel
             if (InfoPanel)
             {
-                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", "Current Mark: " + nextMark.displayName);
+                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", "Current Mark '" + nextMark.displayName + "' is located near " + ParseLocationFromVector(nextMark.ServerPosition) + ".");
                 InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
             }
+        }
+
+        private string ParseLocationFromVector(UnityEngine.Vector3 position)
+        {
+            // TODO: Implement parsing from vector to map string (A1), also consider implementing randomizing to get a nearby value instead
+            return "";
         }
 
         #endregion
