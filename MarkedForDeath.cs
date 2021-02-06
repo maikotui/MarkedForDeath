@@ -115,7 +115,8 @@ namespace Oxide.Plugins
             }
             else
             {
-                SendReply(arg, "Could not find player '" + markName + "'. Please try again.");
+                Interface.Oxide.LogError($"Could not find player with name {markName}");
+                SendError(arg, $"Could not find player with name {markName}");
             }
         }
 
@@ -141,7 +142,8 @@ namespace Oxide.Plugins
             }
             else
             {
-                SendReply(arg, "Could not find player with ID '" + markID + "'. Please try again.");
+                Interface.Oxide.LogError($"Could not find player with SteamID {markID}");
+                SendError(arg, $"Could not find player with SteamID {markID}");
             }
         }
 
@@ -161,20 +163,23 @@ namespace Oxide.Plugins
                 }
             }
 
-            if(mark == null)
+            if(mark != null)
             {
-                this.
+                dataFile["MarkedPlayerLocation"] = GetScrambledMapCoords(mark.ServerPosition);
+
+                dataFile.Save();
+
+                // Update the infopanel
+                if (InfoPanel)
+                {
+                    InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
+                    InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
+                }
             }
-
-            dataFile["MarkedPlayerLocation"] = GetScrambledMapCoords(mark.ServerPosition);
-
-            dataFile.Save();
-
-            // Update the infopanel
-            if (InfoPanel)
+            else
             {
-                InfoPanel.Call("SetPanelAttribute", "MarkedForDeath", "CurrentMarkPanelText", "Content", $"'{dataFile["MarkedPlayerName"]}' is marked for death. Last seen near {dataFile["MarkedPlayerLocation"]}.");
-                InfoPanel.Call("RefreshPanel", "MarkedForDeath", "CurrentMarkPanel");
+                Interface.Oxide.LogError($"Could not find player with SteamID {markID}");
+                SendError(arg, $"Could not find player with SteamID {markID}");
             }
         }
 
