@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Oxide.Plugins
 {
-    [Info("MarkedForDeath", "humanalog", "1.1")]
+    [Info("MarkedForDeath", "humanalog", "1.2")]
     [Description("One person will be marked for death. After killing this person, the killer becomes the next who is marked for death.")]
     public class MarkedForDeath : RustPlugin
     {
@@ -197,6 +197,12 @@ namespace Oxide.Plugins
             }
         }
 
+        [ChatCommand("refresh")]
+        private void RefreshCommand(ConsoleSystem.Arg arg)
+        {
+            ReloadInfoPanel();
+        }
+
         #endregion
 
         #region Utility
@@ -303,7 +309,7 @@ namespace Oxide.Plugins
 
         void OnPlayerConnected(BasePlayer player)
         {
-            ReloadInfoPanel();
+            timer.Once(10f, () => ReloadInfoPanel());
         }
 
         private static string CurrentMarkPanelCfg = @"
@@ -324,7 +330,7 @@ namespace Oxide.Plugins
                 ""AnchorY"": ""Bottom"",
                 ""Available"": true,
                 ""BackgroundColor"": ""0 0 0 0.4"",
-                ""Content"": ""No Content"",
+                ""Content"": ""Use '\refresh' in chat."",
                 ""FadeIn"": 0.0,
                 ""FadeOut"": 0.0,
                 ""FontColor"": ""1 1 1 1"",
